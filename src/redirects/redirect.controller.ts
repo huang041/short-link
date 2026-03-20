@@ -9,13 +9,16 @@ export async function handleRedirect(req: Request, res: Response, next: NextFunc
       ? req.headers['referer'][0]
       : req.headers['referer']
 
+    const referralCode = req.query.ref as string | undefined
+
     // TODO: detect social bot → serve OG preview HTML instead of redirect
-    await redirectService.handle(shortCode, {
+    const longUrl = await redirectService.handle(shortCode, {
       ip: req.ip,
       userAgent,
       referer,
+      referralCode,
     })
-    // TODO: res.redirect(302, longUrl)
+    res.redirect(302, longUrl)
   } catch (err) {
     next(err)
   }
