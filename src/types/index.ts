@@ -1,5 +1,5 @@
 export interface ClickEvent {
-  shortCode: string
+  urlId: string
   referralCode?: string
   ip?: string
   userAgent?: string

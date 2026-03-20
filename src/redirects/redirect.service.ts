@@ -8,7 +8,7 @@ export const redirectService = {
 
     // fire-and-forget analytics
     analyticsService.record({
-      shortCode,
+      urlId: url.id,
       ...ctx,
     }).catch(console.error)
 

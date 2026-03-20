@@ -3,8 +3,16 @@ import { ClickEvent } from '../types'
 
 export const analyticsService = {
   async record(event: ClickEvent) {
-    // TODO: write click event to DB
-    throw new Error('Not implemented')
+    await prisma.click.create({
+      data: {
+        urlId: event.urlId,
+        referralCode: event.referralCode,
+        ip: event.ip,
+        userAgent: event.userAgent,
+        referer: event.referer,
+        country: event.country,
+      },
+    })
   },
 
   async getStats(shortCode: string) {
