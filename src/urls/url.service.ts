@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { redis } from '../lib/redis'
+import { ogService } from '../preview/og.service'
 import type { Url } from '@prisma/client'
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
@@ -16,6 +17,18 @@ function generateShortCode(): string {
   return code
 }
 
+async function fetchAndStoreOgTags(urlId: string, longUrl: string) {
+  const ogTags = await ogService.fetch(longUrl)
+  await prisma.url.update({
+    where: { id: urlId },
+    data: {
+      ogTitle: ogTags.title,
+      ogDescription: ogTags.description,
+      ogImage: ogTags.image,
+    },
+  })
+}
+
 export const urlService = {
   async create(longUrl: string, campaign?: string): Promise<Url> {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -27,7 +40,8 @@ export const urlService = {
 
         await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
 
-        // TODO: trigger OG tag fetch in background
+        // fire-and-forget OG tag fetch
+        fetchAndStoreOgTags(url.id, longUrl).catch(console.error)
 
         return url
       } catch (err) {
