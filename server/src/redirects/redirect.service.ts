@@ -1,5 +1,5 @@
 import { urlService } from '../urls/url.service'
-import { analyticsService } from '../analytics/analytics.service'
+import { clickQueue } from '../lib/queue'
 import { AppError } from '../middlewares/errorHandler'
 
 export const redirectService = {
@@ -7,11 +7,8 @@ export const redirectService = {
     const url = await urlService.findByCode(shortCode)
     if (!url) throw new AppError(404, 'URL not found')
 
-    // fire-and-forget analytics
-    analyticsService.record({
-      urlId: url.id,
-      ...ctx,
-    }).catch(console.error)
+    // enqueue click event, worker writes to DB asynchronously
+    clickQueue.add('click', { urlId: url.id, ...ctx }).catch(console.error)
 
     return url.longUrl
   },
