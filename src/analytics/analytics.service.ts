@@ -1,4 +1,5 @@
 import UAParser from 'ua-parser-js'
+import geoip from 'geoip-lite'
 import { prisma } from '../lib/prisma'
 import { ClickEvent } from '../types'
 
@@ -6,15 +7,22 @@ function parseDevice(userAgent?: string) {
   if (!userAgent) return {}
   const ua = new UAParser(userAgent)
   return {
-    device: ua.getDevice().type || 'desktop', // mobile, tablet, or fallback to desktop
+    device: ua.getDevice().type || 'desktop',
     browser: ua.getBrowser().name,
     os: ua.getOS().name,
   }
 }
 
+function lookupCountry(ip?: string): string | undefined {
+  if (!ip) return undefined
+  const geo = geoip.lookup(ip)
+  return geo?.country
+}
+
 export const analyticsService = {
   async record(event: ClickEvent) {
     const { device, browser, os } = parseDevice(event.userAgent)
+    const country = lookupCountry(event.ip)
 
     await prisma.click.create({
       data: {
@@ -26,7 +34,7 @@ export const analyticsService = {
         browser,
         os,
         referer: event.referer,
-        country: event.country,
+        country,
       },
     })
   },
