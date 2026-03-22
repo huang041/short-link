@@ -1,15 +1,15 @@
-import UAParser from 'ua-parser-js'
+import { UAParser } from 'ua-parser-js'
 import geoip from 'geoip-lite'
 import { prisma } from '../lib/prisma'
 import { ClickEvent } from '../types'
 
 function parseDevice(userAgent?: string) {
   if (!userAgent) return {}
-  const ua = new UAParser(userAgent)
+  const result = UAParser(userAgent)
   return {
-    device: ua.getDevice().type || 'desktop',
-    browser: ua.getBrowser().name,
-    os: ua.getOS().name,
+    device: result.device.type || 'desktop',
+    browser: result.browser.name,
+    os: result.os.name,
   }
 }
 
