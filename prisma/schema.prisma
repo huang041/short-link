@@ -31,6 +31,9 @@ model Click {
   referralCode String?
   ip           String?
   userAgent    String?
+  device       String?  // mobile, desktop, tablet
+  browser      String?  // Chrome, Safari, Firefox...
+  os           String?  // iOS, Android, Windows, macOS...
   referer      String?
   country      String?
   clickedAt    DateTime @default(now())

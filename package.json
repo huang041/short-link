@@ -18,6 +18,7 @@
     "express": "^5.2.1",
     "prisma": "^6.7.0",
     "redis": "^5.11.0",
+    "ua-parser-js": "^2.0.9",
     "zod": "^4.3.6"
   },
   "prisma": {
@@ -27,6 +28,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
+    "@types/ua-parser-js": "^0.7.39",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
