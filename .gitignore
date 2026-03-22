@@ -2,8 +2,5 @@ node_modules
 dist
 .env
 
-# Prisma generated client
-/src/generated/
-
 # Claude Code
 .claude/settings.local.json
