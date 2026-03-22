@@ -45,6 +45,19 @@ export const api = {
       byDate: Record<string, number>
     }>(`/analytics/${shortCode}`),
 
+  getStatsByLongUrl: (longUrl: string) =>
+    request<{
+      longUrl: string
+      totalClicks: number
+      shortUrls: { shortCode: string; campaign: string | null }[]
+      byCampaign: Record<string, number>
+      byDevice: Record<string, number>
+      byCountry: Record<string, number>
+      byBrowser: Record<string, number>
+      byReferrer: Record<string, number>
+      byDate: Record<string, number>
+    }>(`/analytics/url?longUrl=${encodeURIComponent(longUrl)}`),
+
   // Referrals
   createReferral: () =>
     request<{ id: string; code: string }>('/referrals', { method: 'POST' }),
