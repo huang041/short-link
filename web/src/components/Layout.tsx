@@ -33,6 +33,7 @@ export default function Layout() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <Link to="/" style={navStyle('/')}>Create</Link>
+        <Link to="/urls" style={navStyle('/urls')}>URLs</Link>
         <Link to="/analytics" style={navStyle('/analytics')}>Analytics</Link>
         <Link to="/referrals" style={navStyle('/referrals')}>Referrals</Link>
         <div style={{ marginLeft: 'auto' }}>

@@ -28,6 +28,11 @@ export const api = {
     ),
 
   // URLs
+  listUrls: () =>
+    request<{ id: string; shortCode: string; longUrl: string; campaign: string | null; createdAt: string; expiresAt: string | null }[]>(
+      '/urls',
+    ),
+
   createUrl: (data: { longUrl: string; campaign?: string }) =>
     request<{ id: string; shortCode: string; longUrl: string; campaign: string | null }>(
       '/urls/shorten', { method: 'POST', body: JSON.stringify(data) },

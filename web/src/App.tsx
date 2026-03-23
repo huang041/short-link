@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import CreateUrl from './pages/CreateUrl'
 import Analytics from './pages/Analytics'
 import Referrals from './pages/Referrals'
+import UrlList from './pages/UrlList'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<CreateUrl />} />
+          <Route path="/urls" element={<UrlList />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/referrals" element={<Referrals />} />
           <Route path="/login" element={<Login />} />

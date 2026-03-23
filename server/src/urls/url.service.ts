@@ -55,6 +55,13 @@ export const urlService = {
     throw new Error('Failed to generate unique short code')
   },
 
+  async list(): Promise<Url[]> {
+    return prisma.url.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+  },
+
   async findByCode(shortCode: string): Promise<Url | null> {
     const cached = await redis.get(`url:${shortCode}`)
     if (cached) return JSON.parse(cached) as Url
