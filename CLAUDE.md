@@ -30,7 +30,7 @@ short-link/
     └── src/
         ├── api/client.ts   # fetch wrapper，自動帶 Bearer token
         ├── components/     # Layout
-        └── pages/          # CreateUrl、Analytics、Login、Register、Referrals
+        └── pages/          # CreateUrl、Analytics、Login、Register、Referrals、UrlList
 ```
 
 ## 常用指令
@@ -59,6 +59,11 @@ npx prisma generate         # schema 變更後重新產生 Prisma client
 npx prisma studio           # 開啟 Prisma GUI
 npx tsx prisma/seed.ts      # 建立 admin user + referral code
 
+# 測試
+cd server && npm test              # vitest run（單次）
+cd server && npm run test:watch    # vitest watch 模式
+cd server && npm run test:coverage # 含 coverage 報告
+
 # 腳本
 npx tsx scripts/create-url.ts                    # 建立短網址
 npx tsx scripts/load-test.ts <shortCode>         # 壓測跳轉 API
@@ -76,6 +81,7 @@ CONNECTIONS=100 DURATION=30 npx tsx scripts/load-test.ts <shortCode>
 - **Campaign** — 建立短網址時指定，綁定在 Url 資料列，用於同一長網址不同行銷活動的歸因。
 - **DB-side aggregation** — analytics 統計用 Prisma `groupBy` + raw SQL，不把所有 click rows 撈回 Node.js。
 - **Rate limiting** — 用 Redis 計數（sliding window），防止 API 濫用。
+- **Unit tests** — Vitest，colocated（`*.test.ts` 與 service 同層），mock Prisma/Redis，`tsconfig.test.json` 獨立給測試用。
 
 ## 基礎設施
 
