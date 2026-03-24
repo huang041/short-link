@@ -30,13 +30,13 @@ import { urlService } from './url.service'
 import { prisma } from '../lib/prisma'
 import { redis } from '../lib/redis'
 
-const mockPrismaUrl = prisma.url as {
+const mockPrismaUrl = prisma.url as unknown as {
   create: ReturnType<typeof vi.fn>
   findMany: ReturnType<typeof vi.fn>
   findUnique: ReturnType<typeof vi.fn>
 }
 
-const mockRedis = redis as {
+const mockRedis = redis as unknown as {
   get: ReturnType<typeof vi.fn>
   set: ReturnType<typeof vi.fn>
 }

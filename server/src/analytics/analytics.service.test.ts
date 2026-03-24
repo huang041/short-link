@@ -24,13 +24,13 @@ import { analyticsService } from './analytics.service'
 import { prisma } from '../lib/prisma'
 import geoip from 'geoip-lite'
 
-const mockClick = prisma.click as {
+const mockClick = prisma.click as unknown as {
   create: ReturnType<typeof vi.fn>
   count: ReturnType<typeof vi.fn>
   groupBy: ReturnType<typeof vi.fn>
 }
 
-const mockGeoip = geoip as { lookup: ReturnType<typeof vi.fn> }
+const mockGeoip = geoip as unknown as { lookup: ReturnType<typeof vi.fn> }
 
 beforeEach(() => {
   vi.clearAllMocks()

@@ -14,7 +14,7 @@ import { authService } from './auth.service'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middlewares/errorHandler'
 
-const mockUser = prisma.user as {
+const mockUser = prisma.user as unknown as {
   findUnique: ReturnType<typeof vi.fn>
   create: ReturnType<typeof vi.fn>
 }
