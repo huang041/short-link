@@ -29,9 +29,17 @@ export const api = {
 
   // URLs
   listUrls: () =>
-    request<{ id: string; shortCode: string; longUrl: string; campaign: string | null; createdAt: string; expiresAt: string | null }[]>(
-      '/urls',
-    ),
+    request<{
+      id: string
+      shortCode: string
+      longUrl: string
+      campaign: string | null
+      createdAt: string
+      expiresAt: string | null
+      ogTitle: string | null
+      ogDescription: string | null
+      ogImage: string | null
+    }[]>('/urls'),
 
   createUrl: (data: { longUrl: string; campaign?: string }) =>
     request<{ id: string; shortCode: string; longUrl: string; campaign: string | null }>(
