@@ -74,6 +74,18 @@ describe('urlService.create', () => {
     expect(result.longUrl).toBe('https://example.com')
   })
 
+  it('passes expiresAt through to prisma.create', async () => {
+    const expiresAt = new Date('2099-01-01')
+    mockPrismaUrl.create.mockResolvedValueOnce({ ...fakeUrl, expiresAt })
+    mockRedis.set.mockResolvedValueOnce('OK')
+
+    await urlService.create('https://example.com', undefined, expiresAt)
+
+    expect(mockPrismaUrl.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ expiresAt }),
+    })
+  })
+
   it('retries on P2002 unique constraint violation', async () => {
     const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint', {
       code: 'P2002',

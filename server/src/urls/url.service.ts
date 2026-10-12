@@ -30,12 +30,12 @@ async function fetchAndStoreOgTags(urlId: string, longUrl: string) {
 }
 
 export const urlService = {
-  async create(longUrl: string, campaign?: string): Promise<Url> {
+  async create(longUrl: string, campaign?: string, expiresAt?: Date): Promise<Url> {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         const shortCode = generateShortCode()
         const url = await prisma.url.create({
-          data: { shortCode, longUrl, campaign },
+          data: { shortCode, longUrl, campaign, expiresAt },
         })
 
         await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
