@@ -14,7 +14,28 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || `Request failed: ${res.status}`)
   }
+  if (res.status === 204) return undefined as T
   return res.json()
+}
+
+export type UrlItem = {
+  id: string
+  shortCode: string
+  longUrl: string
+  campaign: string | null
+  createdAt: string
+  expiresAt: string | null
+  isActive: boolean
+  ogTitle: string | null
+  ogDescription: string | null
+  ogImage: string | null
+}
+
+export type UpdateUrlInput = {
+  longUrl?: string
+  campaign?: string | null
+  expiresAt?: string | null
+  isActive?: boolean
 }
 
 export const api = {
@@ -28,18 +49,13 @@ export const api = {
     ),
 
   // URLs
-  listUrls: () =>
-    request<{
-      id: string
-      shortCode: string
-      longUrl: string
-      campaign: string | null
-      createdAt: string
-      expiresAt: string | null
-      ogTitle: string | null
-      ogDescription: string | null
-      ogImage: string | null
-    }[]>('/urls'),
+  listUrls: () => request<UrlItem[]>('/urls'),
+
+  updateUrl: (shortCode: string, data: UpdateUrlInput) =>
+    request<UrlItem>(`/urls/${shortCode}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteUrl: (shortCode: string) =>
+    request<void>(`/urls/${shortCode}`, { method: 'DELETE' }),
 
   createUrl: (data: { longUrl: string; campaign?: string }) =>
     request<{ id: string; shortCode: string; longUrl: string; campaign: string | null }>(
