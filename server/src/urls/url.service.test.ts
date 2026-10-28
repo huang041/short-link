@@ -63,7 +63,7 @@ describe('urlService.create', () => {
     mockPrismaUrl.create.mockResolvedValueOnce(fakeUrl)
     mockRedis.set.mockResolvedValueOnce('OK')
 
-    const result = await urlService.create('https://example.com')
+    const result = await urlService.create('https://example.com', 'user1')
 
     expect(mockPrismaUrl.create).toHaveBeenCalledOnce()
     expect(mockRedis.set).toHaveBeenCalledWith(
@@ -79,7 +79,7 @@ describe('urlService.create', () => {
     mockPrismaUrl.create.mockResolvedValueOnce({ ...fakeUrl, expiresAt })
     mockRedis.set.mockResolvedValueOnce('OK')
 
-    await urlService.create('https://example.com', undefined, expiresAt)
+    await urlService.create('https://example.com', 'user1', undefined, expiresAt)
 
     expect(mockPrismaUrl.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ expiresAt }),
@@ -97,7 +97,7 @@ describe('urlService.create', () => {
 
     mockRedis.set.mockResolvedValueOnce('OK')
 
-    const result = await urlService.create('https://example.com')
+    const result = await urlService.create('https://example.com', 'user1')
 
     expect(mockPrismaUrl.create).toHaveBeenCalledTimes(2)
     expect(result.shortCode).toBe(fakeUrl.shortCode)
@@ -110,7 +110,7 @@ describe('urlService.create', () => {
     })
     mockPrismaUrl.create.mockRejectedValue(p2002)
 
-    await expect(urlService.create('https://example.com')).rejects.toThrow(
+    await expect(urlService.create('https://example.com', 'user1')).rejects.toThrow(
       'Failed to generate unique short code',
     )
     expect(mockPrismaUrl.create).toHaveBeenCalledTimes(3)
@@ -119,7 +119,7 @@ describe('urlService.create', () => {
   it('rethrows non-P2002 errors immediately', async () => {
     mockPrismaUrl.create.mockRejectedValueOnce(new Error('DB connection error'))
 
-    await expect(urlService.create('https://example.com')).rejects.toThrow('DB connection error')
+    await expect(urlService.create('https://example.com', 'user1')).rejects.toThrow('DB connection error')
     expect(mockPrismaUrl.create).toHaveBeenCalledOnce()
   })
 })
@@ -152,6 +152,15 @@ describe('urlService.findByCode', () => {
     mockPrismaUrl.findUnique.mockResolvedValueOnce(null)
 
     const result = await urlService.findByCode('notfound')
+    expect(result).toBeNull()
+  })
+
+  it('returns null for expired URL served from cache', async () => {
+    mockRedis.get.mockResolvedValueOnce(
+      JSON.stringify({ ...fakeUrl, expiresAt: new Date('2000-01-01') }),
+    )
+
+    const result = await urlService.findByCode('abc1234')
     expect(result).toBeNull()
   })
 

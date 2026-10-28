@@ -1,5 +1,5 @@
 // Usage:
-//   npx ts-node scripts/create-url.ts <longUrl> [campaign]
+//   TOKEN=<jwt> npx ts-node scripts/create-url.ts <longUrl> [campaign]
 //
 // Examples:
 //   npx ts-node scripts/create-url.ts https://www.google.com
@@ -10,7 +10,10 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 async function createShortUrl(longUrl: string, campaign?: string) {
   const res = await fetch(`${BASE_URL}/api/urls/shorten`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.TOKEN}`,
+    },
     body: JSON.stringify({ longUrl, campaign }),
   })
 

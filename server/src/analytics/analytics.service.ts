@@ -66,9 +66,10 @@ export const analyticsService = {
     })
   },
 
-  async getStats(shortCode: string) {
+  async getStats(shortCode: string, userId: string) {
     const url = await prisma.url.findUnique({ where: { shortCode } })
-    if (!url) return null
+    // treat other users' URLs as not found
+    if (!url || url.userId !== userId) return null
 
     const urlIds = [url.id]
     const [totalClicks, byDevice, byCountry, byBrowser, byReferrer, byDate] = await Promise.all([
@@ -83,9 +84,9 @@ export const analyticsService = {
     return { totalClicks, campaign: url.campaign, byDevice, byCountry, byBrowser, byReferrer, byDate }
   },
 
-  async getStatsByLongUrl(longUrl: string) {
+  async getStatsByLongUrl(longUrl: string, userId: string) {
     const urls = await prisma.url.findMany({
-      where: { longUrl },
+      where: { longUrl, userId },
       select: { id: true, shortCode: true, campaign: true },
     })
     if (urls.length === 0) return null
