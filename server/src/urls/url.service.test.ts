@@ -9,7 +9,12 @@ vi.mock('../lib/prisma', () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
+    click: {
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -17,6 +22,7 @@ vi.mock('../lib/redis', () => ({
   redis: {
     get: vi.fn(),
     set: vi.fn(),
+    del: vi.fn(),
   },
 }))
 
@@ -34,11 +40,13 @@ const mockPrismaUrl = prisma.url as unknown as {
   create: ReturnType<typeof vi.fn>
   findMany: ReturnType<typeof vi.fn>
   findUnique: ReturnType<typeof vi.fn>
+  update: ReturnType<typeof vi.fn>
 }
 
 const mockRedis = redis as unknown as {
   get: ReturnType<typeof vi.fn>
   set: ReturnType<typeof vi.fn>
+  del: ReturnType<typeof vi.fn>
 }
 
 const fakeUrl = {
@@ -50,6 +58,8 @@ const fakeUrl = {
   ogDescription: null,
   ogImage: null,
   expiresAt: null,
+  isActive: true,
+  userId: 'user1',
   createdAt: new Date(),
   updatedAt: new Date(),
 }
@@ -164,5 +174,61 @@ describe('urlService.findByCode', () => {
 
     const result = await urlService.findByCode('abc1234')
     expect(result).toBeNull()
+  })
+})
+
+describe('urlService.findByCode (inactive)', () => {
+  it('returns null for inactive URL from DB', async () => {
+    mockRedis.get.mockResolvedValueOnce(null)
+    mockPrismaUrl.findUnique.mockResolvedValueOnce({ ...fakeUrl, isActive: false })
+    expect(await urlService.findByCode('abc1234')).toBeNull()
+    expect(mockRedis.set).not.toHaveBeenCalled()
+  })
+
+  it('returns null for inactive URL from cache', async () => {
+    mockRedis.get.mockResolvedValueOnce(JSON.stringify({ ...fakeUrl, isActive: false }))
+    expect(await urlService.findByCode('abc1234')).toBeNull()
+  })
+})
+
+describe('urlService.update', () => {
+  it('updates owned URL and invalidates cache', async () => {
+    mockPrismaUrl.findUnique.mockResolvedValueOnce(fakeUrl)
+    mockPrismaUrl.update.mockResolvedValueOnce({ ...fakeUrl, isActive: false })
+
+    const result = await urlService.update('abc1234', 'user1', { isActive: false })
+
+    expect(mockPrismaUrl.update).toHaveBeenCalledWith({
+      where: { shortCode: 'abc1234' },
+      data: { isActive: false },
+    })
+    expect(mockRedis.del).toHaveBeenCalledWith('url:abc1234')
+    expect(result.isActive).toBe(false)
+  })
+
+  it('rejects with 404 when URL belongs to someone else', async () => {
+    mockPrismaUrl.findUnique.mockResolvedValueOnce(fakeUrl)
+    await expect(urlService.update('abc1234', 'other', { isActive: false })).rejects.toMatchObject({
+      statusCode: 404,
+    })
+    expect(mockPrismaUrl.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('urlService.remove', () => {
+  it('deletes owned URL with its clicks and invalidates cache', async () => {
+    mockPrismaUrl.findUnique.mockResolvedValueOnce(fakeUrl)
+    ;(prisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+    await urlService.remove('abc1234', 'user1')
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(mockRedis.del).toHaveBeenCalledWith('url:abc1234')
+  })
+
+  it('rejects with 404 for anonymous (userId null) URL', async () => {
+    mockPrismaUrl.findUnique.mockResolvedValueOnce({ ...fakeUrl, userId: null })
+    await expect(urlService.remove('abc1234', 'user1')).rejects.toMatchObject({ statusCode: 404 })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })
