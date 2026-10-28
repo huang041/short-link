@@ -16,6 +16,7 @@ model Url {
   ogDescription String?
   ogImage       String?
   expiresAt     DateTime?
+  isActive      Boolean   @default(true)
   userId        String?
   user          User?     @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())

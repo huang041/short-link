@@ -1,5 +1,6 @@
 -- AlterTable
-ALTER TABLE "urls" ADD COLUMN     "userId" TEXT;
+ALTER TABLE "urls" ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "userId" TEXT;
 
 -- CreateIndex
 CREATE INDEX "urls_userId_idx" ON "urls"("userId");

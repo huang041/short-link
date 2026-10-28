@@ -1,5 +1,5 @@
 // Usage:
-//   TOKEN=<jwt> npx ts-node scripts/create-url.ts <longUrl> [campaign]
+//   [TOKEN=<jwt>] npx ts-node scripts/create-url.ts <longUrl> [campaign]
 //
 // Examples:
 //   npx ts-node scripts/create-url.ts https://www.google.com
@@ -12,7 +12,7 @@ async function createShortUrl(longUrl: string, campaign?: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.TOKEN}`,
+      ...(process.env.TOKEN ? { Authorization: `Bearer ${process.env.TOKEN}` } : {}),
     },
     body: JSON.stringify({ longUrl, campaign }),
   })
