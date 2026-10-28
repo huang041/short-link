@@ -16,11 +16,15 @@ model Url {
   ogDescription String?
   ogImage       String?
   expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   clicks        Click[]
 
+  @@index([userId])
   @@map("urls")
 }
 
@@ -51,6 +55,7 @@ model User {
   createdAt    DateTime   @default(now())
 
   referrals    Referral[]
+  urls         Url[]
 
   @@map("users")
 }

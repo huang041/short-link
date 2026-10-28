@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { redis } from '../lib/redis'
+import { AppError } from '../middlewares/errorHandler'
 import { ogService } from '../preview/og.service'
 import type { Url } from '@prisma/client'
 
@@ -30,12 +31,12 @@ async function fetchAndStoreOgTags(urlId: string, longUrl: string) {
 }
 
 export const urlService = {
-  async create(longUrl: string, campaign?: string, expiresAt?: Date): Promise<Url> {
+  async create(longUrl: string, campaign?: string, expiresAt?: Date, userId?: string): Promise<Url> {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         const shortCode = generateShortCode()
         const url = await prisma.url.create({
-          data: { shortCode, longUrl, campaign, expiresAt },
+          data: { shortCode, longUrl, campaign, expiresAt, userId },
         })
 
         await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
@@ -55,8 +56,9 @@ export const urlService = {
     throw new Error('Failed to generate unique short code')
   },
 
-  async list(): Promise<Url[]> {
+  async list(userId: string): Promise<Url[]> {
     return prisma.url.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 100,
     })
@@ -64,14 +66,47 @@ export const urlService = {
 
   async findByCode(shortCode: string): Promise<Url | null> {
     const cached = await redis.get(`url:${shortCode}`)
-    if (cached) return JSON.parse(cached) as Url
+    if (cached) {
+      const url = JSON.parse(cached) as Url
+      return url.isActive === false ? null : url
+    }
 
     const url = await prisma.url.findUnique({ where: { shortCode } })
-    if (!url) return null
+    if (!url || !url.isActive) return null
 
     if (url.expiresAt && url.expiresAt < new Date()) return null
 
     await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
     return url
   },
+
+  async update(
+    shortCode: string,
+    userId: string,
+    data: { longUrl?: string; campaign?: string | null; expiresAt?: Date | null; isActive?: boolean },
+  ): Promise<Url> {
+    await getOwned(shortCode, userId)
+    const url = await prisma.url.update({ where: { shortCode }, data })
+    await redis.del(`url:${shortCode}`)
+    // longUrl 變了 → OG 資料已過期，重抓
+    if (data.longUrl) fetchAndStoreOgTags(url.id, data.longUrl).catch(console.error)
+    return url
+  },
+
+  async remove(shortCode: string, userId: string): Promise<void> {
+    const url = await getOwned(shortCode, userId)
+    // Click 有 FK 指向 Url，先刪 clicks
+    await prisma.$transaction([
+      prisma.click.deleteMany({ where: { urlId: url.id } }),
+      prisma.url.delete({ where: { id: url.id } }),
+    ])
+    await redis.del(`url:${shortCode}`)
+  },
+}
+
+// 不是自己的短網址一律回 404，避免洩漏存在與否
+async function getOwned(shortCode: string, userId: string): Promise<Url> {
+  const url = await prisma.url.findUnique({ where: { shortCode } })
+  if (!url || url.userId !== userId) throw new AppError(404, 'URL not found')
+  return url
 }
