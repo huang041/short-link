@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { redis } from '../lib/redis'
@@ -9,13 +10,21 @@ const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 const SHORT_CODE_LENGTH = 7
 const CACHE_TTL = 3600 // 1 hour
 const MAX_RETRIES = 3
+const DEFAULT_PAGE_SIZE = 50
 
 function generateShortCode(): string {
   let code = ''
   for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
-    code += BASE62[Math.floor(Math.random() * 62)]
+    code += BASE62[randomInt(BASE62.length)]
   }
   return code
+}
+
+// don't keep a URL cached past its expiry
+function cacheTtl(url: Url): number {
+  if (!url.expiresAt) return CACHE_TTL
+  const remaining = Math.ceil((new Date(url.expiresAt).getTime() - Date.now()) / 1000)
+  return Math.max(1, Math.min(CACHE_TTL, remaining))
 }
 
 async function fetchAndStoreOgTags(urlId: string, longUrl: string) {
@@ -39,7 +48,7 @@ export const urlService = {
           data: { shortCode, longUrl, campaign, expiresAt, userId },
         })
 
-        await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
+        await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: cacheTtl(url) })
 
         // fire-and-forget OG tag fetch
         fetchAndStoreOgTags(url.id, longUrl).catch(console.error)
@@ -56,11 +65,12 @@ export const urlService = {
     throw new Error('Failed to generate unique short code')
   },
 
-  async list(userId: string): Promise<Url[]> {
+  async list(userId: string, limit = DEFAULT_PAGE_SIZE, offset = 0): Promise<Url[]> {
     return prisma.url.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limit,
+      skip: offset,
     })
   },
 
@@ -68,7 +78,10 @@ export const urlService = {
     const cached = await redis.get(`url:${shortCode}`)
     if (cached) {
       const url = JSON.parse(cached) as Url
-      return url.isActive === false ? null : url
+      if (url.isActive === false) return null
+      // expiresAt is a string after JSON round-trip; check on every hit
+      if (url.expiresAt && new Date(url.expiresAt) < new Date()) return null
+      return url
     }
 
     const url = await prisma.url.findUnique({ where: { shortCode } })
@@ -76,7 +89,7 @@ export const urlService = {
 
     if (url.expiresAt && url.expiresAt < new Date()) return null
 
-    await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: CACHE_TTL })
+    await redis.set(`url:${shortCode}`, JSON.stringify(url), { EX: cacheTtl(url) })
     return url
   },
 

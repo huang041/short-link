@@ -1,3 +1,5 @@
+import { safeFetchText } from './safeFetch'
+
 export interface OgTags {
   title?: string
   description?: string
@@ -7,12 +9,7 @@ export interface OgTags {
 
 export const ogService = {
   async fetch(url: string): Promise<OgTags> {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'bot' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(5000),
-    })
-    const html = await res.text()
+    const html = await safeFetchText(url)
 
     return {
       title: extractMeta(html, 'og:title') || extractTag(html, 'title'),

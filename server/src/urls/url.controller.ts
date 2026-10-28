@@ -7,15 +7,24 @@ const futureDate = z.coerce.date().refine((date) => date > new Date(), {
   message: 'expiresAt must be in the future',
 })
 
+const httpUrl = z.string().url().refine((u) => /^https?:\/\//i.test(u), {
+  message: 'longUrl must be http or https',
+})
+
 const createUrlSchema = z.object({
-  longUrl: z.string().url(),
+  longUrl: httpUrl,
   campaign: z.string().optional(),
   expiresAt: futureDate.optional(),
 })
 
+const listQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+})
+
 const updateUrlSchema = z
   .object({
-    longUrl: z.string().url().optional(),
+    longUrl: httpUrl.optional(),
     campaign: z.string().nullable().optional(),
     expiresAt: futureDate.nullable().optional(),
     isActive: z.boolean().optional(),
@@ -24,7 +33,8 @@ const updateUrlSchema = z
 
 export async function listUrls(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const urls = await urlService.list(req.userId!)
+    const { limit, offset } = listQuerySchema.parse(req.query)
+    const urls = await urlService.list(req.userId!, limit, offset)
     res.json(urls)
   } catch (err) {
     next(err)

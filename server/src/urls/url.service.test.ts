@@ -165,6 +165,15 @@ describe('urlService.findByCode', () => {
     expect(result).toBeNull()
   })
 
+  it('returns null for expired URL served from cache', async () => {
+    mockRedis.get.mockResolvedValueOnce(
+      JSON.stringify({ ...fakeUrl, expiresAt: new Date('2000-01-01') }),
+    )
+
+    const result = await urlService.findByCode('abc1234')
+    expect(result).toBeNull()
+  })
+
   it('returns null for expired URL', async () => {
     mockRedis.get.mockResolvedValueOnce(null)
     mockPrismaUrl.findUnique.mockResolvedValueOnce({
