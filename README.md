@@ -12,6 +12,8 @@
 
 ## 快速啟動
 
+需先安裝 [Docker](https://www.docker.com/) 與 Docker Compose。
+
 ```bash
 docker-compose -f docker-compose.prod.yml up --build
 ```
@@ -22,7 +24,7 @@ docker-compose -f docker-compose.prod.yml up --build
 
 ## 架構
 
-```
+```text
 nginx (port 8080)
 ├── /api/*          → Express backend (port 3000)
 ├── /[a-zA-Z0-9]{7} → Express backend (短碼跳轉)
