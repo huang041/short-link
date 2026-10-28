@@ -1,16 +1,34 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { api, type UrlItem } from '../api/client'
 
-type UrlItem = {
-  id: string
-  shortCode: string
-  longUrl: string
-  campaign: string | null
-  createdAt: string
-  expiresAt: string | null
-  ogTitle: string | null
-  ogDescription: string | null
-  ogImage: string | null
+const btn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  flexShrink: 0,
+  padding: '6px 12px',
+  fontSize: 12,
+  fontWeight: 500,
+  borderRadius: 6,
+  border: '1px solid #e2e8f0',
+  background: '#f8fafc',
+  color: '#64748b',
+  cursor: 'pointer',
+  ...extra,
+})
+
+const input: React.CSSProperties = {
+  padding: '6px 8px',
+  fontSize: 13,
+  borderRadius: 6,
+  border: '1px solid #e2e8f0',
+  width: '100%',
+  boxSizing: 'border-box',
+}
+
+// datetime-local 需要 "YYYY-MM-DDTHH:mm" 的本地時間
+function toLocalInput(iso: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
 }
 
 export default function UrlList() {
@@ -25,6 +43,56 @@ export default function UrlList() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const [editing, setEditing] = useState<string | null>(null)
+  const [form, setForm] = useState({ longUrl: '', campaign: '', expiresAt: '' })
+  const [busy, setBusy] = useState(false)
+
+  const replace = (u: UrlItem) => setUrls((list) => list.map((x) => (x.id === u.id ? u : x)))
+
+  const startEdit = (url: UrlItem) => {
+    setEditing(url.id)
+    setForm({
+      longUrl: url.longUrl,
+      campaign: url.campaign ?? '',
+      expiresAt: toLocalInput(url.expiresAt),
+    })
+  }
+
+  const saveEdit = async (url: UrlItem) => {
+    setBusy(true)
+    try {
+      const updated = await api.updateUrl(url.shortCode, {
+        longUrl: form.longUrl,
+        campaign: form.campaign.trim() || null,
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+      })
+      replace(updated)
+      setEditing(null)
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleActive = async (url: UrlItem) => {
+    try {
+      replace(await api.updateUrl(url.shortCode, { isActive: !url.isActive }))
+    } catch (e) {
+      alert((e as Error).message)
+    }
+  }
+
+  const remove = async (url: UrlItem) => {
+    if (!confirm(`Delete /${url.shortCode}? Its click history will be deleted too.`)) return
+    try {
+      await api.deleteUrl(url.shortCode)
+      setUrls((list) => list.filter((x) => x.id !== url.id))
+    } catch (e) {
+      alert((e as Error).message)
+    }
+  }
 
   const shortBase = window.location.origin
 
@@ -58,7 +126,7 @@ export default function UrlList() {
                 border: '1px solid #e2e8f0',
                 borderRadius: 10,
                 overflow: 'hidden',
-                opacity: isExpired ? 0.5 : 1,
+                opacity: isExpired || !url.isActive ? 0.5 : 1,
               }}>
                 {/* OG Preview */}
                 {(url.ogTitle || url.ogImage) && (
@@ -115,6 +183,18 @@ export default function UrlList() {
                           {url.campaign}
                         </span>
                       )}
+                      {!url.isActive && (
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: '#f1f5f9',
+                          color: '#64748b',
+                        }}>
+                          disabled
+                        </span>
+                      )}
                       {isExpired && (
                         <span style={{
                           fontSize: 11,
@@ -142,24 +222,61 @@ export default function UrlList() {
                       {new Date(url.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <button
-                    onClick={() => copy(shortUrl, url.id)}
-                    style={{
-                      flexShrink: 0,
-                      padding: '6px 12px',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      borderRadius: 6,
-                      border: '1px solid #e2e8f0',
-                      background: copied === url.id ? '#f0fdf4' : '#f8fafc',
-                      color: copied === url.id ? '#16a34a' : '#64748b',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {copied === url.id ? 'Copied!' : 'Copy'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => copy(shortUrl, url.id)}
+                      style={btn(copied === url.id ? { background: '#f0fdf4', color: '#16a34a' } : {})}
+                    >
+                      {copied === url.id ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button onClick={() => startEdit(url)} style={btn()}>Edit</button>
+                    <button onClick={() => toggleActive(url)} style={btn()}>
+                      {url.isActive ? 'Disable' : 'Enable'}
+                    </button>
+                    <button onClick={() => remove(url)} style={btn({ color: '#ef4444' })}>Delete</button>
+                  </div>
                 </div>
+
+                {editing === url.id && (
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}>
+                    <input
+                      style={input}
+                      type="url"
+                      placeholder="Long URL"
+                      value={form.longUrl}
+                      onChange={(e) => setForm({ ...form, longUrl: e.target.value })}
+                    />
+                    <input
+                      style={input}
+                      placeholder="Campaign (optional)"
+                      value={form.campaign}
+                      onChange={(e) => setForm({ ...form, campaign: e.target.value })}
+                    />
+                    <input
+                      style={input}
+                      type="datetime-local"
+                      value={form.expiresAt}
+                      onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+                    />
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEditing(null)} style={btn()}>Cancel</button>
+                      <button
+                        onClick={() => saveEdit(url)}
+                        disabled={busy || !form.longUrl}
+                        style={btn({ background: '#6366f1', color: '#fff', border: '1px solid #6366f1' })}
+                      >
+                        {busy ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
